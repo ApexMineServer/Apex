@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Apex – Seja da Staff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1 class="px logo">APEX</h1>
+  <p>Quer ajudar a cuidar da nossa comunidade? Preencha o formulário para ser staff no Minecraft e/ou no Discord.</p>
+  <nav class="nav" aria-label="Páginas"><a href="index.html">VIPs</a><a href="staff.html" class="on" aria-current="page">Seja Staff</a></nav>
+</header>
+
+<form id="f" class="form" novalidate>
+  <div class="qs" id="qs"></div>
+  <div class="hp" aria-hidden="true"><label>Não preencha este campo<input id="website" tabindex="-1" autocomplete="off"></label></div>
+  <p class="msg-erro" id="err" role="alert"></p>
+  <button class="b2 send" id="send" type="submit">Enviar candidatura</button>
+</form>
+
+<footer>Apex © 2026 · Não afiliado à Mojang ou à Microsoft.</footer>
+
+<script src="config.js"></script>
+<script>
+/* ===== EDITE AQUI: as perguntas do formulário ===== */
+/* tipos: texto | longo | unica (escolha uma) | multipla (escolha várias) | aceite
+   so: "Minecraft" ou "Discord" = só aparece para quem escolheu essa vaga (ou "Os dois")
+   opcional: true = não é obrigatória */
+const PERGUNTAS = [
+  { secao: "Sobre você" },
+  { id: "nick", tipo: "texto", p: "Qual é o seu nick no Minecraft?", max: 20 },
+  { id: "edicao", tipo: "unica", p: "Qual versão do Minecraft você joga?", opcoes: ["Java", "Bedrock"] },
+  { tipo: "texto", p: "Qual é o seu usuário no Discord?", max: 40 },
+  { tipo: "unica", p: "Qual é a sua idade?", opcoes: ["Menos de 14 anos", "14 a 15 anos", "16 a 17 anos", "18 a 24 anos", "25 anos ou mais"] },
+
+  { secao: "A vaga e a sua disponibilidade" },
+  { id: "vaga", tipo: "unica", p: "Para qual staff você quer se candidatar?", opcoes: ["Staff do Minecraft", "Staff do Discord", "Os dois"] },
+  { tipo: "unica", p: "Quanto tempo você tem disponível por semana?", opcoes: ["Menos de 5 horas", "De 5 a 10 horas", "De 10 a 20 horas", "Mais de 20 horas"] },
+  { tipo: "multipla", p: "Em quais períodos do dia você costuma estar online?", opcoes: ["Manhã", "Tarde", "Noite", "Madrugada"] },
+  { tipo: "multipla", p: "Em quais dias você tem mais tempo?", opcoes: ["Segunda a sexta", "Sábado", "Domingo"] },
+  { tipo: "unica", p: "Há quanto tempo você joga no Apex?", opcoes: ["Menos de 1 semana", "De 1 semana a 1 mês", "De 1 a 3 meses", "Mais de 3 meses"] },
+
+  { secao: "Experiência" },
+  { tipo: "unica", p: "Você já foi staff antes?", opcoes: ["Nunca", "Sim, em servidor de Minecraft", "Sim, em servidor de Discord", "Sim, nos dois"] },
+  { tipo: "unica", p: "Como você avalia sua experiência com moderação?", opcoes: ["Nenhuma, mas quero aprender", "Básica", "Intermediária", "Avançada"] },
+  { so: "Minecraft", tipo: "multipla", p: "Quais destas ferramentas de Minecraft você já usou?", opcoes: ["LuckPerms", "CoreProtect (rollback)", "Comandos de punição (ban, mute, kick)", "Nenhuma"] },
+  { so: "Discord", tipo: "multipla", p: "Quais destas ferramentas de Discord você já usou?", opcoes: ["Bots de moderação (Carl-bot, MEE6...)", "Sistema de tickets", "Cargos e permissões", "Nenhuma"] },
+  { tipo: "unica", p: "Você leu as regras do Apex?", opcoes: ["Sim, conheço bem", "Li por cima", "Ainda não li"] },
+
+
+  { secao: "Finalizando" },
+  { tipo: "unica", p: "Você pode participar de uma entrevista por voz no Discord?", opcoes: ["Sim", "Só por texto", "Prefiro combinar depois"] },
+  { tipo: "longo", p: "Quer acrescentar alguma coisa?", opcional: true },
+  { tipo: "aceite", p: "Confirmação", texto: "Li as regras do servidor e sei que enviar o formulário não garante a vaga." }
+];
+/* ================================================== */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const VAGA = PERGUNTAS.findIndex(q => q.id === "vaga");
+let sess = null;
+try { sess = JSON.parse(localStorage.getItem("apex")); } catch (e) {}
+const lembrado = sess && sess.nick ? sess : null; // se já vinculou a conta na loja, preenche sozinho
+
+function render() {
+  $("qs").innerHTML = PERGUNTAS.map((q, i) => {
+    if (q.secao) return '<h2 class="px sec">' + esc(q.secao) + '</h2>';
+    const nome = "q" + i;
+    let campo;
+    if (q.tipo === "texto") campo = '<input class="inp" name="' + nome + '" maxlength="' + (q.max || 60) + '" autocomplete="off" value="' + esc(q.id === "nick" && lembrado ? lembrado.nick : "") + '">';
+    else if (q.tipo === "longo") campo = '<textarea class="inp" name="' + nome + '" maxlength="500" placeholder="Escreva sua resposta aqui"></textarea>';
+    else if (q.tipo === "aceite") campo = '<div class="opts"><label class="opt"><input type="checkbox" name="' + nome + '" value="Sim"><span>' + esc(q.texto) + '</span></label></div>';
+    else {
+      const t = q.tipo === "unica" ? "radio" : "checkbox";
+      campo = '<div class="opts">' + q.opcoes.map(o =>
+        '<label class="opt"><input type="' + t + '" name="' + nome + '" value="' + esc(o) + '"' +
+        (q.id === "edicao" && lembrado && o.toLowerCase() === lembrado.edicao ? " checked" : "") + '><span>' + esc(o) + '</span></label>').join("") + '</div>';
+    }
+    return '<div class="q" data-i="' + i + '"' + (q.so ? ' data-so="' + q.so + '" hidden' : '') + '><h3>' + esc(q.p) + (q.opcional ? ' <small>(opcional)</small>' : q.tipo === "longo" ? ' <small>(responda com suas palavras)</small>' : '') + '</h3>' + campo + '</div>';
+  }).join("");
+  atualizar();
+}
+
+function atualizar() {
+  const v = (document.querySelector('.q[data-i="' + VAGA + '"] input:checked') || {}).value || "";
+  document.querySelectorAll(".q[data-so]").forEach(b => { b.hidden = !(v === "Os dois" || v.includes(b.dataset.so)); });
+}
+
+$("f").addEventListener("change", e => { atualizar(); const q = e.target.closest(".q"); if (q) q.classList.remove("erro"); });
+
+$("f").addEventListener("submit", async e => {
+  e.preventDefault();
+  const campos = []; let primeiro = null;
+  document.querySelectorAll(".q").forEach(b => {
+    b.classList.remove("erro");
+    if (b.hidden) return;
+    const q = PERGUNTAS[b.dataset.i];
+    const r = q.tipo === "texto" || q.tipo === "longo"
+      ? b.querySelector("input,textarea").value.trim()
+      : [...b.querySelectorAll("input:checked")].map(x => x.value).join(", ");
+    if ((!r && !q.opcional) || (r && q.min && r.length < q.min)) { b.classList.add("erro"); primeiro = primeiro || b; return; }
+    if (r) campos.push({ p: q.p, r });
+  });
+  const err = $("err"), btn = $("send");
+  if (primeiro) { err.textContent = "Faltam respostas (ou estão muito curtas) nas perguntas marcadas em vermelho."; primeiro.scrollIntoView({ block: "center" }); return; }
+  err.textContent = ""; btn.disabled = true; btn.textContent = "Enviando…";
+  try {
+    const r = await fetch(API + "/api/staff/apply", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sid: sess && sess.sid, website: $("website").value, campos })
+    });
+    if (r.status === 429) throw new Error("Muitos envios seguidos. Tente de novo mais tarde.");
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || "Erro ao enviar. Tente de novo.");
+    $("f").innerHTML = '<div class="sent"><h2 class="px sec">Candidatura enviada!</h2><p class="ok">Obrigado por se candidatar. Nossa equipe vai analisar e entrar em contato pelo Discord.</p><p><a href="index.html">Voltar para a loja</a></p></div>';
+    window.scrollTo(0, 0);
+  } catch (e2) {
+    err.textContent = e2 instanceof TypeError ? "Não foi possível conectar. Tente de novo em instantes." : e2.message;
+    btn.disabled = false; btn.textContent = "Enviar candidatura";
+  }
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Apex – Loja de VIPs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="acct" id="acct"></div>
+  <h1 class="px logo">APEX</h1>
+  <div class="fox"><img src="images/comunidademc.png" alt="Logo da ComunidadeMC" width="560" height="368"></div>
+  <p>Loja oficial de VIPs do servidor Apex. Escolha seu VIP e jogue com vantagens.</p>
+  <nav class="nav" aria-label="Páginas"><a href="index.html" class="on" aria-current="page">VIPs</a><a href="staff.html">Seja Staff</a></nav>
+</header>
+
+<main>
+  <section class="card main">
+    <h2 class="px">VIP</h2>
+    <div class="btns">
+      <button class="b1" data-open="perks">Benefícios</button>
+      <button class="b2" data-open="plans">Comprar</button>
+    </div>
+  </section>
+  <section class="card soon">
+    <h2 class="px">Plus</h2>
+    <div class="soon-tag px">EM BREVE</div>
+  </section>
+  <section class="card soon">
+    <h2 class="px">Ultra</h2>
+    <div class="soon-tag px">EM BREVE</div>
+  </section>
+</main>
+
+<section class="gal">
+  <h2 class="px">Conheça o Apex</h2>
+  <div class="gal-grid">
+    <img src="images/lobby-boas-vindas.jpg" alt="Plataforma de boas-vindas do lobby do Apex" loading="lazy">
+    <img src="images/lobby-lagoa.jpg" alt="Lagoa com cachoeira no lobby do Apex" loading="lazy">
+    <img src="images/lobby-plataforma.jpg" alt="Plataforma de pedra do lobby ao pôr do sol" loading="lazy">
+    <img src="images/lobby-floresta.jpg" alt="Floresta de bétulas no lobby do Apex" loading="lazy">
+  </div>
+</section>
+
+<footer>Apex © 2026 · Não afiliado à Mojang ou à Microsoft.</footer>
+
+<div class="overlay" id="perks" role="dialog" aria-modal="true" aria-labelledby="t1">
+  <div class="modal">
+    <button class="x" data-close aria-label="Fechar">✕</button>
+    <h3 class="px" id="t1">Benefícios do VIP</h3>
+    <ul class="perks" id="perkList"></ul>
+  </div>
+</div>
+
+<div class="overlay" id="plans" role="dialog" aria-modal="true" aria-labelledby="t2">
+  <div class="modal">
+    <button class="x" data-close aria-label="Fechar">✕</button>
+    <h3 class="px" id="t2">Escolha seu plano</h3>
+    <div class="cupom">
+      <input id="cupom" class="inp cupom-in" placeholder="Cupom" maxlength="30" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Cupom de desconto">
+      <p class="hint cm" id="cupomMsg">Tem um cupom? Digite e aperte Enter.</p>
+    </div>
+    <div class="plans" id="planList"></div>
+    <p class="hint">Você vai vincular seu Minecraft ao site e pagar por Pix.</p>
+  </div>
+</div>
+
+<div class="overlay" id="co" role="dialog" aria-modal="true" aria-labelledby="t3">
+  <div class="modal">
+    <button class="x" data-close aria-label="Fechar">✕</button>
+    <div id="ck"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+/* ===== EDITE AQUI ===== */
+const BENEFICIOS = [
+  "Prioridade nas filas",
+  "1 vida extra em eventos",
+  "1 mensagem por dia no chat de eventos",
+  "Tag de VIP no servidor de Minecraft e no Discord do Apex",
+  "Benefícios no servidor do Discord do Apex (leia o Discord para mais informações)",
+  "Mensagem exclusiva de entrada no servidor de Minecraft do Apex"
+];
+const PLANOS = [
+  { dias: 15, cheio: 12.5 },
+  { dias: 30, cheio: 22.5, destaque: true },
+  { dias: 60, cheio: 40 }
+];
+/* ====================== */
+
+const $ = id => document.getElementById(id);
+const R = v => "R$ " + v.toFixed(2).replace(".", ",");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+$("perkList").innerHTML = BENEFICIOS.map(b => "<li>" + b + "</li>").join("");
+let cupom = null; // cupom aplicado: { nome, desconto }
+function renderPlanos() {
+  const d = cupom ? cupom.desconto : 0;
+  $("planList").innerHTML = PLANOS.map((p, i) =>
+    '<div class="plan' + (p.destaque ? ' best' : '') + '"><div class="px d">' + p.dias + ' dias</div>' +
+    '<div class="old">' + (d ? R(p.cheio) : '&nbsp;') + '</div><div class="p">' + R(p.cheio * (1 - d)) + '</div>' +
+    (d ? '<div class="cp">−' + Math.round(d * 100) + '% · ' + esc(cupom.nome) + '</div>' : '') +
+    '<button class="b2" data-plan="' + i + '">Comprar</button></div>'
+  ).join("");
+}
+renderPlanos();
+async function aplicarCupom() {
+  const codigo = $("cupom").value.trim(), msg = $("cupomMsg");
+  msg.className = "hint cm";
+  if (!codigo) { cupom = null; msg.textContent = "Tem um cupom? Digite e aperte Enter."; return renderPlanos(); }
+  try {
+    cupom = await api("/api/cupom", { codigo });
+    msg.textContent = "✓ Cupom " + cupom.nome + " aplicado: −" + Math.round(cupom.desconto * 100) + "%"; msg.classList.add("ok-cupom");
+  } catch (e) { cupom = null; msg.textContent = e.message; msg.classList.add("erro-cupom"); }
+  renderPlanos();
+}
+
+// cabeça padrão (usada se a skin não carregar ou no Bedrock)
+const FACE = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect width="8" height="8" fill="#b8845a"/><rect width="8" height="2" fill="#3a2a1b"/><rect x="1" y="4" width="2" height="1" fill="#fff"/><rect x="5" y="4" width="2" height="1" fill="#fff"/><rect x="2" y="4" width="1" height="1" fill="#3b2f8f"/><rect x="5" y="4" width="1" height="1" fill="#3b2f8f"/><rect x="3" y="6" width="2" height="1" fill="#7a4a2f"/></svg>');
+
+let last = null, timer = null, sess = null, pendente = null, edicao = "java";
+try { sess = JSON.parse(localStorage.getItem("apex")); } catch (e) {}
+const keep = () => { try { localStorage.setItem("apex", JSON.stringify(sess)); } catch (e) {} };
+
+function open(id) { last = document.activeElement; $(id).classList.add("open"); $(id).querySelector(".x").focus(); }
+function closeAll() { clearInterval(timer); document.querySelectorAll(".overlay").forEach(o => o.classList.remove("open")); if (last) last.focus(); }
+function view(h) { $("ck").innerHTML = h; if (!$("co").classList.contains("open")) open("co"); }
+const fail = m => view('<h3 class="px" id="t3">Ops</h3><p>' + esc(m) + '</p>');
+
+async function api(path, body) {
+  let r;
+  try {
+    r = await fetch(API + path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  } catch (e) { throw new Error("Não foi possível conectar à loja. Tente de novo em instantes."); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || "Erro inesperado.");
+  return j;
+}
+
+// ---- Botão de conta (canto superior direito) ----
+function renderAcct() {
+  const a = $("acct");
+  if (sess && sess.nick) {
+    const src = sess.edicao === "java" && sess.uuid ? "https://mc-heads.net/avatar/" + encodeURIComponent(sess.uuid) + "/64" : FACE;
+    a.innerHTML = '<img class="av" alt="" width="32" height="32" src="' + src + '"><span class="nm">' + esc(sess.nick) + '</span><button class="b1 sm" data-act="sair">Sair</button>';
+    a.querySelector("img").onerror = function () { this.onerror = null; this.src = FACE; };
+  } else {
+    a.innerHTML = '<button class="b1 sm" data-act="login">Vincular conta</button>';
+  }
+}
+
+// ---- Passo 1: edição + nick ----
+function loginView(msg) {
+  edicao = "java";
+  view('<h3 class="px" id="t3">Vincular conta</h3>' + (msg ? '<p class="hint">' + esc(msg) + '</p>' : '') +
+    '<p>Qual versão do Minecraft você joga?</p>' +
+    '<div class="eds"><button class="ed on" data-ed="java">Java<small>1.21.11 ou superior</small></button>' +
+    '<button class="ed" data-ed="bedrock">Bedrock<small>última versão</small></button></div>' +
+    '<label class="lb" for="nick">Seu nick (gamertag)</label>' +
+    '<input id="nick" class="inp" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ex.: Steve">' +
+    '<button class="b2" data-act="gerar" style="width:100%;margin-top:14px">Gerar código</button><p class="hint" id="msg"></p>');
+  $("nick").focus();
+}
+
+// ---- Passo 2: código para digitar no jogo ----
+async function gerar() {
+  const nick = $("nick").value.trim();
+  if (!nick) { $("msg").textContent = "Digite o seu nick."; return; }
+  try {
+    const s = await api("/api/link/start", { nick, edicao });
+    sess = { sid: s.sid }; keep();
+    const cmd = "/vincular " + s.code;
+    view('<h3 class="px" id="t3">Confirme no jogo</h3><p>Pedido de vínculo para <b>' + esc(s.nick) + '</b>. Siga os passos:</p>' +
+      '<ol class="steps"><li>Entre no servidor Apex: <b>' + esc(SERVIDOR.ip) + '</b>' + (edicao === "bedrock" ? ' (porta <b>' + esc(SERVIDOR.portaBedrock) + '</b>)' : '') + '.</li>' +
+      '<li>Vai aparecer uma mensagem no chat e um aviso na tela.</li>' +
+      '<li>Digite este comando no chat do jogo:</li></ol>' +
+      '<div class="code px">' + esc(cmd) + '</div>' +
+      '<button class="b1" data-act="copiar" data-cmd="' + esc(cmd) + '" style="width:100%">Copiar comando</button>' +
+      '<p class="hint">Esperando você confirmar no jogo… O código vale por 10 minutos e só funciona para o nick <b>' + esc(s.nick) + '</b>.</p>');
+    aguardar();
+  } catch (e) { $("msg").textContent = e.message; }
+}
+
+function aguardar() {
+  clearInterval(timer);
+  timer = setInterval(async () => {
+    try {
+      const s = await api("/api/link/status?sid=" + encodeURIComponent(sess.sid));
+      if (s.linked) {
+        clearInterval(timer);
+        sess = { sid: sess.sid, nick: s.nick, uuid: s.uuid, edicao: s.edicao }; keep(); renderAcct();
+        if (pendente !== null) { const i = pendente; pendente = null; pay(i); }
+        else view('<h3 class="px" id="t3">Conta vinculada!</h3><p class="ok">Tudo certo, ' + esc(s.nick) + '. Agora é só escolher seu VIP.</p>');
+      } else if (s.expirado) {
+        clearInterval(timer); sess = null; keep(); renderAcct(); loginView("O código expirou. Gere um novo.");
+      }
+    } catch (e) {}
+  }, 3000);
+}
+
+// ---- Compra ----
+function buy(i) {
+  if (sess && sess.nick) return pay(i);
+  pendente = i; loginView("Para comprar, primeiro vincule seu Minecraft.");
+}
+
+async function pay(i) {
+  const p = PLANOS[i];
+  try {
+    const o = await api("/api/checkout", { sid: sess.sid, dias: p.dias, cupom: cupom ? cupom.nome : undefined });
+    view('<h3 class="px" id="t3">Pague com Pix</h3><p>Conta: <b>' + esc(sess.nick) + '</b> · VIP ' + p.dias + ' dias · <b>' + R(o.valor) + '</b></p>' +
+      '<img class="qr" alt="QR Code do Pix" src="data:image/png;base64,' + o.qr + '">' +
+      '<textarea class="cola" rows="3" readonly>' + esc(o.copia) + '</textarea>' +
+      '<button class="b1" data-act="copiar" data-cmd="' + esc(o.copia) + '" style="width:100%;margin-top:10px">Copiar código Pix</button>' +
+      '<p class="hint">Assim que o pagamento for confirmado, seu VIP é ativado automaticamente. Pode deixar esta janela aberta.</p>');
+    clearInterval(timer);
+    timer = setInterval(async () => {
+      try {
+        const s = await api("/api/order?id=" + encodeURIComponent(o.orderId));
+        if (s.status === "entregue") { clearInterval(timer); view('<h3 class="px" id="t3">VIP ativado!</h3><p class="ok">Pagamento confirmado. Aproveite o Apex, ' + esc(sess.nick) + '!</p>'); }
+      } catch (e) {}
+    }, 4000);
+  } catch (e) {
+    if (/expirou|expirada/.test(e.message)) { sess = null; keep(); renderAcct(); pendente = i; return loginView("Sua sessão expirou. Vincule de novo para continuar."); }
+    fail(e.message);
+  }
+}
+
+document.addEventListener("click", e => {
+  if (e.target.classList.contains("overlay")) return closeAll();
+  const b = e.target.closest("button"); if (!b) return;
+  const d = b.dataset;
+  if (d.open) open(d.open);
+  else if (b.hasAttribute("data-close")) closeAll();
+  else if (d.plan !== undefined) buy(+d.plan);
+  else if (d.ed) {
+    edicao = d.ed;
+    document.querySelectorAll(".ed").forEach(x => x.classList.toggle("on", x === b));
+    $("msg").textContent = edicao === "bedrock" ? "Bedrock: digite sua gamertag sem o ponto na frente." : "";
+  }
+  else if (d.act === "login") { pendente = null; loginView(); }
+  else if (d.act === "gerar") gerar();
+  else if (d.act === "copiar") navigator.clipboard.writeText(d.cmd).then(() => { b.textContent = "Copiado!"; });
+  else if (d.act === "sair") { sess = null; keep(); renderAcct(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeAll();
+  if (e.key === "Enter" && e.target.id === "nick") gerar();
+  if (e.key === "Enter" && e.target.id === "cupom") { e.preventDefault(); aplicarCupom(); }
+});
+
+document.addEventListener("input", e => { // se mexer no texto depois de aplicar, o desconto é removido até apertar Enter de novo
+  if (e.target.id === "cupom" && cupom && e.target.value.trim().toLowerCase() !== cupom.nome.toLowerCase()) {
+    cupom = null; $("cupomMsg").className = "hint cm"; $("cupomMsg").textContent = "Tem um cupom? Digite e aperte Enter."; renderPlanos();
+  }
+});
+
+renderAcct();
+if (sess && sess.sid) api("/api/link/status?sid=" + encodeURIComponent(sess.sid)).then(s => { if (s.expirado) { sess = null; keep(); renderAcct(); } }).catch(() => {});
+</script>
+</body>
+</html>
